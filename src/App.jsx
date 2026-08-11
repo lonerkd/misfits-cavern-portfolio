@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, ExternalLink, X, Film, Mail, FileText, ChevronLeft } from 'lucide-react';
+import { Play, ExternalLink, X, Film, Mail, FileText, ChevronLeft, Images } from 'lucide-react';
 import CustomCursor from './CustomCursor.jsx';
 import DotField from './DotField.jsx';
+import StarField from './StarField.jsx';
 import { VIDEOS, FEATURED_ID, CREW_CREDITS, WRITING, OTHER_WRITING, SKILL_GROUPS, FACTS, EMAIL, SOCIALS } from './content.js';
 import { thumbUrl, thumbFallback, embedUrl, watchUrl, tintFor, extractColor } from './media.js';
 
@@ -9,7 +10,7 @@ const FEATURED = VIDEOS.find(v => v.id === FEATURED_ID);
 const REST = VIDEOS.filter(v => v.id !== FEATURED_ID);
 
 /* ─── Scroll reveal ─────────────────────────────────────── */
-function Reveal({ children, delay = 0, style }) {
+function Reveal({ children, delay = 0, style, className = '' }) {
   const ref = useRef(null);
   const [seen, setSeen] = useState(false);
   useEffect(() => {
@@ -23,7 +24,7 @@ function Reveal({ children, delay = 0, style }) {
     return () => io.disconnect();
   }, []);
   return (
-    <div ref={ref} className={`reveal${seen ? ' in' : ''}`} style={{ transitionDelay: `${delay}s`, ...style }}>
+    <div ref={ref} className={`reveal${seen ? ' in' : ''} ${className}`.trim()} style={{ transitionDelay: `${delay}s`, ...style }}>
       {children}
     </div>
   );
@@ -295,6 +296,7 @@ export default function App() {
   const [activeColor, setActiveColor] = useState(null);
   const [ambient, setAmbient] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -328,6 +330,14 @@ export default function App() {
           </div>
           <div style={{ display:'flex', gap:8 }}>
             <a href="#work" className="link-btn" style={{ padding:'7px 13px' }}>Work</a>
+            <button
+              onClick={() => setShowPhotos(true)}
+              data-cursor="view"
+              className="link-btn"
+              style={{ padding:'7px 13px', display:'inline-flex', alignItems:'center', gap:6 }}
+            >
+              <Images size={10} /> Photos
+            </button>
             <a href={`mailto:${EMAIL}`} className="link-btn" style={{ padding:'7px 13px' }}>
               <Mail size={10} /> Hire Me
             </a>
@@ -386,12 +396,18 @@ export default function App() {
         {/* ═══ WORK ═══ */}
         <section id="work" style={{ maxWidth:1180, margin:'0 auto', padding:'30px 22px 20px' }}>
           <Reveal><SectionLabel text="Selected Work" right={`${VIDEOS.length} Projects`} /></Reveal>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(268px, 1fr))', gap:12 }}>
-            {REST.map((v, i) => (
-              <Reveal key={v.id} delay={(i % 4) * 0.05} style={{ gridColumn: v.feat ? 'span 2' : undefined }}>
-                <VCard v={v} onClick={open} onTint={setAmbient} big={v.feat} />
-              </Reveal>
-            ))}
+          <div className="mc-bento">
+            {REST.map((v, i) => {
+              // Apple-style bento: featured items are large (2×2), the first
+              // two after that are wide (2×1), the rest standard (1×1).
+              // On smaller screens the .mc-bento CSS collapses to 1 column.
+              const cls = v.feat ? 'bento-feat' : (i < 2 ? 'bento-wide' : '');
+              return (
+                <Reveal key={v.id} className={cls} delay={(i % 4) * 0.05}>
+                  <VCard v={v} onClick={open} onTint={setAmbient} big={v.feat} />
+                </Reveal>
+              );
+            })}
           </div>
 
           {CREW_CREDITS.length > 0 && (
@@ -442,6 +458,7 @@ export default function App() {
                     encodeURIComponent('Script request — Femme Fatale: The Useful Dead') + '&body=' +
                     encodeURIComponent("Hi Peter,\n\nI read the sample pages on your site and I'd like to read the full script.\n\nName:\nCompany / role:\n\nThanks,")}
                   className="btn-primary"
+                  data-cursor="req"
                 >
                   <FileText size={12} /> Request Full Script
                 </a>
@@ -449,7 +466,7 @@ export default function App() {
                 {/* Scripts that are fine to read in full */}
                 <div style={{ marginTop:22, display:'flex', flexDirection:'column', gap:8 }}>
                   {OTHER_WRITING.map(w => w.did ? (
-                    <a key={w.title} href={`https://drive.google.com/file/d/${w.did}/view`} target="_blank" rel="noopener noreferrer"
+                    <a key={w.title} href={`https://drive.google.com/file/d/${w.did}/view`} target="_blank" rel="noopener noreferrer" data-cursor="read"
                       style={{
                         display:'flex', justifyContent:'space-between', alignItems:'center', gap:12,
                         padding:'10px 14px', border:'1px solid var(--border)', borderRadius:'var(--r-xs)',
@@ -582,6 +599,7 @@ export default function App() {
       </div>
 
       <VideoOverlay video={active} color={activeColor} onClose={() => setActive(null)} />
+      {showPhotos && <StarField onClose={() => setShowPhotos(false)} />}
     </>
   );
 }

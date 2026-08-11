@@ -239,6 +239,26 @@ h1, h2, h3, h4 { font-family: var(--display); letter-spacing: 2px; line-height: 
   66%      { transform: scale(0.92) translate(-2%, 2%); opacity: 0.05; }
 }
 
+/* ═══ BENTO GRID — Apple-style adaptive ═══ */
+/* 12-col layout on desktop; JSX tags items as .bento-feat (2×2),
+   .bento-wide (2×1) or default (1×1). Everything collapses to a
+   single clean column on smaller screens. */
+.mc-bento {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  grid-auto-flow: dense;
+}
+.mc-bento > * { grid-column: span 3; }
+.mc-bento > *.bento-wide { grid-column: span 4; }
+.mc-bento > *.bento-feat { grid-column: span 6; grid-row: span 2; }
+@media (max-width: 900px) {
+  .mc-bento { grid-template-columns: 1fr; }
+  .mc-bento > *, .mc-bento > *.bento-wide, .mc-bento > *.bento-feat {
+    grid-column: auto; grid-row: auto;
+  }
+}
+
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 900px) {
   .mc-hero-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
