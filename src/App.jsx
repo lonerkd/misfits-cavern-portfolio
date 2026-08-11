@@ -87,7 +87,7 @@ function VCard({ v, onClick, big, onTint }) {
     <button
       ref={ref}
       className="film-chrome"
-      data-cursor="view"
+      data-cursor="play"
       aria-label={`Play ${v.title}`}
       onMouseEnter={() => { setH(true); onTint?.(c); }}
       onMouseLeave={() => { setH(false); onTint?.(null); }}
@@ -200,44 +200,44 @@ function VideoOverlay({ video, color, onClose }) {
   const rgba = a => `rgba(${c.r},${c.g},${c.b},${a})`;
 
   return (
-    <div
-      ref={backdrop}
-      onClick={e => { if (e.target === backdrop.current) onClose(); }}
-      role="dialog" aria-modal="true" aria-label={video.title}
-      style={{
-        position:'fixed', inset:0, zIndex:9500,
-        background:'rgba(2,4,8,0.72)',
-        backdropFilter:'blur(14px) saturate(1.2)', WebkitBackdropFilter:'blur(14px) saturate(1.2)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        overflowY:'auto',
-      }}
-    >
-      {/* Colour wash from the film itself */}
-      <div aria-hidden style={{
-        position:'absolute', inset:0, pointerEvents:'none',
-        background:`radial-gradient(ellipse 80% 60% at 50% 40%, ${rgba(0.18)} 0%, transparent 70%)`,
-      }} />
+      <div
+        ref={backdrop}
+        onClick={e => { if (e.target === backdrop.current) onClose(); }}
+        role="dialog" aria-modal="true" aria-label={video.title}
+        style={{
+          position:'fixed', inset:0, zIndex:9500,
+          background:'rgba(2,4,8,0.72)',
+          backdropFilter:'blur(14px) saturate(1.2)', WebkitBackdropFilter:'blur(14px) saturate(1.2)',
+          overflowY:'auto',
+          paddingTop:48, paddingBottom:48,
+        }}
+      >
+        {/* Colour wash from the film itself */}
+        <div aria-hidden style={{
+          position:'fixed', inset:0, pointerEvents:'none',
+          background:`radial-gradient(ellipse 80% 60% at 50% 40%, ${rgba(0.18)} 0%, transparent 70%)`,
+        }} />
 
-      {/* Letterbox bars */}
-      <div style={{
-        position:'fixed', top:0, left:0, right:0, height:48, zIndex:10,
-        background:'rgba(2,4,8,0.86)', display:'flex', alignItems:'center',
-        justifyContent:'space-between', padding:'0 20px',
-      }}>
-        <button onClick={onClose} style={{
-          display:'flex', alignItems:'center', gap:8, background:'none', border:'none',
-          fontFamily:'var(--mono)', fontSize:9, letterSpacing:3, textTransform:'uppercase',
-          color:'var(--fg-dim)', cursor:'pointer',
-        }}><ChevronLeft size={14} /> Back</button>
-        <button onClick={onClose} aria-label="Close" style={{
-          width:34, height:34, borderRadius:'50%',
-          background:'rgba(224,221,174,0.06)', border:'1px solid rgba(224,221,174,0.10)',
-          display:'flex', alignItems:'center', justifyContent:'center', color:'var(--fg)', cursor:'pointer',
-        }}><X size={15} /></button>
-      </div>
-      <div aria-hidden style={{ position:'fixed', bottom:0, left:0, right:0, height:48, background:'rgba(2,4,8,0.86)', zIndex:10 }} />
+        {/* Letterbox bars */}
+        <div style={{
+          position:'fixed', top:0, left:0, right:0, height:48, zIndex:10,
+          background:'rgba(2,4,8,0.86)', display:'flex', alignItems:'center',
+          justifyContent:'space-between', padding:'0 20px',
+        }}>
+          <button onClick={onClose} style={{
+            display:'flex', alignItems:'center', gap:8, background:'none', border:'none',
+            fontFamily:'var(--mono)', fontSize:9, letterSpacing:3, textTransform:'uppercase',
+            color:'var(--fg-dim)', cursor:'pointer',
+          }}><ChevronLeft size={14} /> Back</button>
+          <button onClick={onClose} aria-label="Close" style={{
+            width:34, height:34, borderRadius:'50%',
+            background:'rgba(224,221,174,0.06)', border:'1px solid rgba(224,221,174,0.10)',
+            display:'flex', alignItems:'center', justifyContent:'center', color:'var(--fg)', cursor:'pointer',
+          }}><X size={15} /></button>
+        </div>
+        <div aria-hidden style={{ position:'fixed', bottom:0, left:0, right:0, height:48, background:'rgba(2,4,8,0.86)', zIndex:10 }} />
 
-      <div onClick={e => e.stopPropagation()} style={{ width:'100%', maxWidth:1060, padding:'78px 20px' }}>
+        <div onClick={e => e.stopPropagation()} style={{ width:'100%', maxWidth:1060, margin:'0 auto', padding:'0 20px 20px' }}>
         <div style={{
           aspectRatio:'16/9', background:'#000', borderRadius:'var(--r-md)', overflow:'hidden',
           boxShadow:`0 0 0 1px rgba(224,221,174,0.06), 0 30px 100px rgba(0,0,0,0.7), 0 0 120px ${rgba(0.12)}`,
