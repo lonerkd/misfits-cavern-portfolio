@@ -3,6 +3,7 @@ import { Play, ExternalLink, X, Film, Mail, FileText, ChevronLeft, Images } from
 import CustomCursor from './CustomCursor.jsx';
 import DotField from './DotField.jsx';
 import StarField from './StarField.jsx';
+import CinematicNav from './CinematicNav.jsx';
 import { VIDEOS, FEATURED_ID, CREW_CREDITS, WRITING, OTHER_WRITING, SKILL_GROUPS, FACTS, EMAIL, SOCIALS } from './content.js';
 import { thumbUrl, thumbFallback, embedUrl, watchUrl, tintFor, extractColor } from './media.js';
 
@@ -310,6 +311,7 @@ export default function App() {
     <>
       <CustomCursor />
       <DotField color={ambient} />
+      <CinematicNav />
       <div className="grain-overlay" />
 
       <div style={{ position:'relative', zIndex:1 }}>
