@@ -362,8 +362,8 @@ export default function App() {
                   fontFamily:'var(--serif)', fontSize:'1.08rem', lineHeight:1.7,
                   color:'var(--fg-muted)', maxWidth:430, marginBottom:24,
                 }}>
-                  I edit and shoot video in Calgary. Music videos, short film, broadcast,
-                  and live multi-cam — usually start to finish.
+                  I conceptualize, shoot and edit video in Calgary. From commercial, music
+                  videos, narrative film, broadcast, live multi-cam, usually from start to finish.
                 </p>
               </Reveal>
 
@@ -381,7 +381,7 @@ export default function App() {
               <Reveal delay={0.2}>
                 <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
                   <a href={`mailto:${EMAIL}`} className="btn-primary"><Mail size={12} /> Get in Touch</a>
-                  <a href="#work" className="btn-ghost">See the Work</a>
+                  <a href="https://ig.me/m/lonerkid" target="_blank" rel="noopener noreferrer" className="btn-ghost">DM</a>
                 </div>
               </Reveal>
             </div>
