@@ -37,8 +37,8 @@ const PHOTOS = [
   '1_j3CG7clf1JjE1JaNBvNG0cMqhoRqkLc','1fSNxxxNah51tP51xSbvn1BBl6fgCuSR4','1afs3_OBj53XPp0TSepx4KqzwB2i2bOl',
 ];
 
-const img = id => `https://lh3.googleusercontent.com/d/${id}=w400`;
-const imgFull = id => `https://lh3.googleusercontent.com/d/${id}=w1600`;
+const img = id => `https://lh3.googleusercontent.com/d/${id}=w800`;
+const imgFull = id => `https://lh3.googleusercontent.com/d/${id}`; // original size + resolution
 
 function rng(seed) {
   let s = seed >>> 0;
@@ -67,16 +67,20 @@ export default function StarField({ onClose }) {
 
   useEffect(() => {
     const r = rng(2026);
-    setPhotos([...PHOTOS].sort(() => r() - 0.5).map((id, i) => {
-      const layer = i % 3;
+    const order = [...PHOTOS].map((id, i) => ({ id, i })).sort(() => r() - 0.5);
+    const placed = [];
+    const MIN = 210; // rejection-sample so nothing clusters — same-shoot shots can't land together
+    setPhotos(order.map(({ id, i }, seq) => {
+      const layer = seq % 3;
       const [lo, hi] = LAYERS[layer].w;
-      return {
-        id, i, layer,
-        x: (r() - 0.5) * 2600,
-        y: (r() - 0.5) * 1500,
-        rot: (r() - 0.5) * 22,
-        w: lo + r() * (hi - lo),
-      };
+      let x = 0, y = 0, ok = false;
+      for (let t = 0; t < 50 && !ok; t++) {
+        x = (r() - 0.5) * 3200;
+        y = (r() - 0.5) * 1900;
+        ok = placed.every(q => Math.hypot(q.x - x, q.y - y) > MIN);
+      }
+      placed.push({ x, y });
+      return { id, i, layer, x, y, rot: (r() - 0.5) * 22, w: lo + r() * (hi - lo) };
     }));
   }, []);
 
@@ -110,7 +114,7 @@ export default function StarField({ onClose }) {
   const focusPhoto = p => {
     const d = LAYERS[p.layer].d;
     const vw = window.innerWidth, vh = window.innerHeight;
-    const s = Math.min(2.4, Math.max(1.1, Math.min((vw * 0.7) / p.w, (vh * 0.55) / (p.w * 0.65))));
+    const s = Math.min(2.4, Math.max(1.1, Math.min((vw * 0.7) / p.w, (vh * 0.55) / (p.w * 0.75))));
     const c = cam.current;
     c.ts = s;
     c.tx = (-s * p.x) / d;
@@ -239,7 +243,7 @@ export default function StarField({ onClose }) {
                 onClick={e => { e.stopPropagation(); if (moved.current > 8) return; setActive(selected ? null : p.i); }}
                 style={{
                   position:'absolute', left:0, top:0,
-                  width:p.w, height:p.w * 0.65,
+                  width:p.w,
                   transform:`translate(-50%, -50%) translate(${p.x}px, ${p.y}px) rotate(${p.rot}deg)`,
                   opacity: active === null || selected ? 1 : 0.15,
                   transition:'opacity 0.4s',
@@ -247,13 +251,13 @@ export default function StarField({ onClose }) {
                 }}
               >
                 <div style={{
-                  width:'100%', height:'100%', borderRadius:8, overflow:'hidden',
+                  width:'100%', borderRadius:8, overflow:'hidden',
                   border: selected ? '2px solid rgba(224,221,174,0.4)' : '1px solid rgba(224,221,174,0.08)',
                   background:'#0a0f1a',
                 }}>
                   <img
-                    src={img(p.id)} alt="" loading="lazy" decoding="async"
-                    style={{ width:'100%', height:'100%', objectFit:'cover', filter:'grayscale(0.35) contrast(1.05)', display:'block' }}
+                    src={selected ? imgFull(p.id) : img(p.id)} alt="" loading="lazy" decoding="async"
+                    style={{ width:'100%', height:'auto', filter:'grayscale(0.35) contrast(1.05)', display:'block' }}
                     onError={e => { e.target.style.display = 'none'; }}
                   />
                 </div>

@@ -590,9 +590,9 @@ export default function App() {
                 >{s.label}</a>
               ))}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:8, letterSpacing:4, textTransform:'uppercase', color:'var(--fg-dim)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12, fontSize:8, letterSpacing:4, textTransform:'uppercase', color:'var(--fg-dim)' }}>
               © 2026 Peter Olowude · Misfits Cavern
-              <img src="/misfits-mark.svg" alt="" aria-hidden="true" style={{ height:18, width:'auto', opacity:0.7 }} />
+              <img src="/misfits-mark.svg" alt="" aria-hidden="true" style={{ height:25, width:'auto', opacity:0.75, flexShrink:0 }} />
             </div>
           </div>
         </footer>
