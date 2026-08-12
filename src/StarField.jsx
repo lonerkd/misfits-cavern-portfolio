@@ -61,6 +61,7 @@ export default function StarField({ onClose }) {
   const cam = useRef({ x: 0, y: 0, s: 1, tx: 0, ty: 0, ts: 1 });
   const pointers = useRef(new Map());
   const pinch = useRef(0);
+  const moved = useRef(0);
   const activeRef = useRef(null);
   activeRef.current = active;
 
@@ -100,16 +101,34 @@ export default function StarField({ onClose }) {
 
   const clampCam = () => {
     const c = cam.current;
-    const bx = 1400 * c.ts + 300, by = 800 * c.ts + 250;
-    c.tx = Math.max(-bx, Math.min(bx, c.tx));
-    c.ty = Math.max(-by, Math.min(by, c.ty));
+    c.tx = Math.max(-7000, Math.min(7000, c.tx));
+    c.ty = Math.max(-4000, Math.min(4000, c.ty));
     c.ts = Math.max(0.4, Math.min(2.6, c.ts));
   };
+
+  /* Fly the camera so a selected still is centred and scaled to fit. */
+  const focusPhoto = p => {
+    const d = LAYERS[p.layer].d;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const s = Math.min(2.4, Math.max(1.1, Math.min((vw * 0.7) / p.w, (vh * 0.55) / (p.w * 0.65))));
+    const c = cam.current;
+    c.ts = s;
+    c.tx = (-s * p.x) / d;
+    c.ty = (-70 - s * p.y) / d;
+  };
+
+  useEffect(() => {
+    if (active !== null && photos[active]) focusPhoto(photos[active]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, photos]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const onKey = e => {
-      if (e.key === 'Escape') return onClose();
+      if (e.key === 'Escape') {
+        if (activeRef.current !== null) return setActive(null); // back to the space
+        return onClose(); // then home
+      }
       const c = cam.current;
       if (activeRef.current !== null) {
         if (e.key === 'ArrowRight') { e.preventDefault(); setActive(a => Math.min(photos.length - 1, a + 1)); }
@@ -136,7 +155,7 @@ export default function StarField({ onClose }) {
   /* Pointer events: 1 finger/mouse drags, 2 fingers pinch-zoom. */
   const onDown = e => {
     if (activeRef.current !== null) return;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    moved.current = 0;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
@@ -148,6 +167,7 @@ export default function StarField({ onClose }) {
     if (!p) return;
     const dx = e.clientX - p.x, dy = e.clientY - p.y;
     p.x = e.clientX; p.y = e.clientY;
+    moved.current += Math.abs(dx) + Math.abs(dy);
     const c = cam.current;
     if (pointers.current.size === 1) { c.tx += dx / c.s; c.ty += dy / c.s; }
     else if (pointers.current.size === 2) {
@@ -196,7 +216,7 @@ export default function StarField({ onClose }) {
         fontFamily:'var(--mono)', fontSize:7.5, letterSpacing:2.5, textTransform:'uppercase',
         color:'var(--fg-dim)', pointerEvents:'none',
       }}>
-        drag pan · scroll / pinch zoom · arrows move · + − zoom · 0 reset · esc close
+        drag pan · scroll / pinch zoom · arrows move · + − zoom · 0 reset · esc back / close
       </div>
 
       {/* Parallax layers (far → near) */}
@@ -216,7 +236,7 @@ export default function StarField({ onClose }) {
                 key={p.id}
                 data-cursor={selected ? 'close' : 'view'}
                 aria-label={`Open still ${p.i + 1}`}
-                onClick={e => { e.stopPropagation(); setActive(selected ? null : p.i); }}
+                onClick={e => { e.stopPropagation(); if (moved.current > 8) return; setActive(selected ? null : p.i); }}
                 style={{
                   position:'absolute', left:0, top:0,
                   width:p.w, height:p.w * 0.65,
@@ -259,7 +279,7 @@ export default function StarField({ onClose }) {
           <div style={{ flex:1, minWidth:110 }}>
             <div style={{ fontFamily:'var(--display)', fontSize:'1.05rem', letterSpacing:1 }}>Still #{active + 1} / {photos.length}</div>
             <div style={{ fontSize:7.5, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)', marginTop:3 }}>
-              ← → browse · esc close
+              ← → browse · esc back
             </div>
           </div>
           <button onClick={() => setActive(a => Math.max(0, a - 1))} data-cursor="action" aria-label="Previous still" style={iconBtn}><ChevronLeft size={15} /></button>
