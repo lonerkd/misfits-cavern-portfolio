@@ -592,7 +592,7 @@ export default function App() {
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:8, letterSpacing:4, textTransform:'uppercase', color:'var(--fg-dim)' }}>
               © 2026 Peter Olowude · Misfits Cavern
-              <img src="/misfits-mark.svg" alt="" aria-hidden="true" style={{ height:14, width:'auto', opacity:0.5, filter:'grayscale(1)' }} />
+              <img src="/misfits-mark.svg" alt="" aria-hidden="true" style={{ height:18, width:'auto', opacity:0.7 }} />
             </div>
           </div>
         </footer>
