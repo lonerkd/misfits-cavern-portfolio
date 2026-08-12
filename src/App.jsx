@@ -381,7 +381,7 @@ export default function App() {
               <Reveal delay={0.2}>
                 <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
                   <a href={`mailto:${EMAIL}`} className="btn-primary"><Mail size={12} /> Get in Touch</a>
-                  <a href="https://ig.me/m/lonerkid" target="_blank" rel="noopener noreferrer" className="btn-ghost">DM</a>
+                  <a href="https://ig.me/m/lonerkid" target="_blank" rel="noopener noreferrer" className="btn-ghost">DM Me</a>
                 </div>
               </Reveal>
             </div>
