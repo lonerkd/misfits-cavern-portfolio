@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, ExternalLink, X, Film, Mail, FileText, ChevronLeft, Images } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import CustomCursor from './CustomCursor.jsx';
 import DotField from './DotField.jsx';
 import StarField from './StarField.jsx';
@@ -602,6 +603,7 @@ export default function App() {
 
       <VideoOverlay video={active} color={activeColor} onClose={() => setActive(null)} />
       {showPhotos && <StarField onClose={() => setShowPhotos(false)} />}
+      <Analytics />
     </>
   );
 }
