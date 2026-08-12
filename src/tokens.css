@@ -262,6 +262,7 @@ h1, h2, h3, h4 { font-family: var(--display); letter-spacing: 2px; line-height: 
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 900px) {
   .mc-hero-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
+  .mc-puck { display: none; } /* native scroll on touch; never cover the footer */
 }
 @media (max-width: 720px) {
   .nav-meta { display: none !important; }

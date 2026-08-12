@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PHOTOS = [
   '1tVlWzEhbkik6Xxk90X1ra_FmZR9VMCAf','1QvTjsBw-UHstHFVVrRAkehxzIx-eGEgZ','1xFFHMEpKQRMbSOewkw3aZy-IWaVH1OoQ',
@@ -37,7 +37,7 @@ const PHOTOS = [
   '1_j3CG7clf1JjE1JaNBvNG0cMqhoRqkLc','1fSNxxxNah51tP51xSbvn1BBl6fgCuSR4','1afs3_OBj53XPp0TSepx4KqzwB2i2bOl',
 ];
 
-const img = id => `https://lh3.googleusercontent.com/d/${id}=w600`;
+const img = id => `https://lh3.googleusercontent.com/d/${id}=w500`;
 const imgFull = id => `https://lh3.googleusercontent.com/d/${id}=w1600`;
 
 function rng(seed) {
@@ -45,163 +45,235 @@ function rng(seed) {
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xffffffff; };
 }
 
+/**
+ * StarField — true-3D photo constellation.
+ * Photos sit at real Z depths inside a perspective world; the camera
+ * (translate3d on one wrapper) is driven entirely by refs + one rAF
+ * loop, so pan/zoom never triggers a React render → no lag.
+ *
+ * Controls: drag (mouse or touch) to pan · wheel / pinch to zoom ·
+ * arrows to pan · +/− to zoom · 0 to reset · Tab+Enter to open a
+ * still · ←/→ browse while one is open · Esc to close.
+ */
 export default function StarField({ onClose }) {
   const [active, setActive] = useState(null);
   const [photos, setPhotos] = useState([]);
-  const [scale, setScale] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const dragging = useRef(false);
-  const last = useRef({ x: 0, y: 0 });
+  const worldRef = useRef(null);
+  const cam = useRef({ x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0 });
+  const pointers = useRef(new Map());
+  const pinch = useRef(0);
+  const activeRef = useRef(null);
+  activeRef.current = active;
 
   useEffect(() => {
     const r = rng(2026);
-    const shuffled = [...PHOTOS].sort(() => r() - 0.5);
-    setPhotos(shuffled.map((id, i) => ({
+    setPhotos([...PHOTOS].sort(() => r() - 0.5).map((id, i) => ({
       id, i,
-      x: (r() - 0.5) * 2800,
-      y: (r() - 0.5) * 1800,
-      z: r() * 0.8 + 0.2,
-      rot: (r() - 0.5) * 30,
-      w: 160 + r() * 220,
+      x: (r() - 0.5) * 2600,
+      y: (r() - 0.5) * 1500,
+      z: (r() - 0.5) * 900,
+      rot: (r() - 0.5) * 24,
+      w: 150 + r() * 190,
     })));
   }, []);
 
+  /* Camera loop — refs only, single rAF, lerped for smoothness. */
+  useEffect(() => {
+    let raf;
+    const tick = () => {
+      const c = cam.current;
+      c.x += (c.tx - c.x) * 0.14;
+      c.y += (c.ty - c.y) * 0.14;
+      c.z += (c.tz - c.z) * 0.14;
+      if (worldRef.current) {
+        worldRef.current.style.transform = `translate3d(${c.x}px, ${c.y}px, ${c.z}px)`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const clampCam = () => {
+    const c = cam.current;
+    c.tx = Math.max(-1700, Math.min(1700, c.tx));
+    c.ty = Math.max(-1000, Math.min(1000, c.ty));
+    c.tz = Math.max(-950, Math.min(520, c.tz));
+  };
+
+  /* Keyboard: pan/zoom/reset in space mode, browse in select mode. */
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const onKey = e => {
-      if (e.key === 'Escape') onClose();
-      if (active !== null) {
-        if (e.key === 'ArrowRight') setActive(a => Math.min(photos.length - 1, a + 1));
-        if (e.key === 'ArrowLeft') setActive(a => Math.max(0, a - 1));
+      if (e.key === 'Escape') return onClose();
+      const c = cam.current;
+      if (activeRef.current !== null) {
+        if (e.key === 'ArrowRight') { e.preventDefault(); setActive(a => Math.min(photos.length - 1, a + 1)); }
+        if (e.key === 'ArrowLeft')  { e.preventDefault(); setActive(a => Math.max(0, a - 1)); }
+        return;
       }
+      switch (e.key) {
+        case 'ArrowLeft':  c.tx += 130; break;
+        case 'ArrowRight': c.tx -= 130; break;
+        case 'ArrowUp':    c.ty += 130; break;
+        case 'ArrowDown':  c.ty -= 130; break;
+        case '+': case '=': c.tz += 100; break;
+        case '-': case '_': c.tz -= 100; break;
+        case '0': c.tx = c.ty = c.tz = 0; break;
+        default: return;
+      }
+      e.preventDefault();
+      clampCam();
     };
     window.addEventListener('keydown', onKey);
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
-  }, [onClose, active, photos.length]);
+  }, [onClose, photos.length]);
 
-  const handleWheel = e => {
-    e.preventDefault();
-    setScale(s => Math.min(3, Math.max(0.4, s - e.deltaY * 0.001)));
+  /* Pointer events unify mouse + touch: 1 finger pans, 2 pinch-zoom. */
+  const onDown = e => {
+    if (activeRef.current !== null) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      pinch.current = Math.hypot(a.x - b.x, a.y - b.y);
+    }
   };
-
-  const startDrag = e => {
-    if (active !== null) return;
-    dragging.current = true;
-    last.current = { x: e.clientX, y: e.clientY };
+  const onMove = e => {
+    const p = pointers.current.get(e.pointerId);
+    if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    const c = cam.current;
+    if (pointers.current.size === 1) { c.tx += dx; c.ty += dy; }
+    else if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      c.tz += (d - pinch.current) * 1.7;
+      pinch.current = d;
+    }
+    clampCam();
   };
-  const moveDrag = e => {
-    if (!dragging.current) return;
-    const dx = e.clientX - last.current.x;
-    const dy = e.clientY - last.current.y;
-    setPan(p => ({ x: p.x + dx, y: p.y + dy }));
-    last.current = { x: e.clientX, y: e.clientY };
-  };
-  const endDrag = () => { dragging.current = false; };
+  const onUp = e => { pointers.current.delete(e.pointerId); pinch.current = 0; };
+  const onWheel = e => { cam.current.tz += -e.deltaY * 0.6; clampCam(); };
 
   return (
     <div
+      role="dialog" aria-modal="true" aria-label="Photo archive"
+      onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
+      onPointerCancel={onUp} onWheel={onWheel}
       style={{
-        position:'fixed', inset:0, zIndex:9900,
+        position:'fixed', inset:0, zIndex:9900, overflow:'hidden',
         background:'radial-gradient(ellipse at center, #0b1022 0%, #020306 100%)',
+        touchAction:'none',
         cursor: active === null ? 'grab' : 'default',
-        overflow:'hidden',
       }}
-      onWheel={handleWheel}
-      onMouseDown={startDrag}
-      onMouseMove={moveDrag}
-      onMouseUp={endDrag}
-      onMouseLeave={endDrag}
     >
       <StarCanvas />
 
+      {/* Toolbar */}
       <div style={{
         position:'fixed', top:0, left:0, right:0, height:54, zIndex:10000,
-        display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 22px',
-        background:'rgba(2,4,8,0.6)', backdropFilter:'blur(16px)', borderBottom:'1px solid rgba(224,221,174,0.06)',
+        display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px',
+        background:'rgba(2,4,8,0.6)', backdropFilter:'blur(16px)',
+        borderBottom:'1px solid rgba(224,221,174,0.06)',
       }}>
-        <div style={{ fontFamily:'var(--mono)', fontSize:8.5, letterSpacing:3, textTransform:'uppercase', color:'var(--fg-dim)' }}>
+        <div style={{ fontFamily:'var(--mono)', fontSize:8, letterSpacing:2.5, textTransform:'uppercase', color:'var(--fg-muted)' }}>
           Photo Archive · {photos.length} stills
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <button onClick={() => setScale(s => Math.max(0.4, s - 0.25))} style={iconBtn}><ZoomOut size={14} /></button>
-          <button onClick={() => setScale(s => Math.min(3, s + 0.25))} style={iconBtn}><ZoomIn size={14} /></button>
-          <button onClick={onClose} style={{ ...iconBtn, borderColor:'var(--accent)', color:'var(--accent)' }}><X size={16} /></button>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <button onClick={() => { cam.current.tz -= 100; clampCam(); }} aria-label="Zoom out" style={iconBtn}><ZoomOut size={14} /></button>
+          <button onClick={() => { cam.current.tz += 100; clampCam(); }} aria-label="Zoom in" style={iconBtn}><ZoomIn size={14} /></button>
+          <button onClick={onClose} aria-label="Close gallery" style={{ ...iconBtn, borderColor:'var(--accent)', color:'var(--accent)' }}><X size={16} /></button>
         </div>
       </div>
 
-      <div style={{
-        position:'absolute', top:'50%', left:'50%',
-        transform:`translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px)) scale(${scale})`,
-        transformOrigin:'center center', transition:'transform 0.1s linear',
-        width:0, height:0,
+      {/* Hint bar */}
+      <div aria-hidden style={{
+        position:'fixed', bottom:10, left:0, right:0, zIndex:10000, textAlign:'center',
+        fontFamily:'var(--mono)', fontSize:7.5, letterSpacing:2.5, textTransform:'uppercase',
+        color:'var(--fg-dim)', pointerEvents:'none',
       }}>
-        {photos.map((p, idx) => {
-          const selected = active === idx;
-          return (
-            <button
-              key={p.id}
-              data-cursor={selected ? 'close' : 'view'}
-              onClick={e => { e.stopPropagation(); setActive(selected ? null : idx); }}
-              style={{
-                position:'absolute', left:p.x, top:p.y,
-                width:p.w, height:p.w * 0.65,
-                transform:`translate(-50%, -50%) rotate(${p.rot}deg) scale(${selected ? 1.15 : 1})`,
-                zIndex: selected ? 200 : Math.round(p.z * 100),
-                opacity: active === null || selected ? 1 : 0.18,
-                transition:'opacity 0.5s, transform 0.5s var(--ease-expo)',
-                background:'none', border:'none', padding:0,
-              }}
-            >
-              <div style={{
-                width:'100%', height:'100%', borderRadius:8, overflow:'hidden',
-                boxShadow: selected
-                  ? `0 30px 80px rgba(0,0,0,0.8), 0 0 0 2px rgba(224,221,174,0.3)`
-                  : `0 20px 60px rgba(0,0,0,0.7)`,
-                border:'1px solid rgba(224,221,174,0.08)',
-              }}>
-                <img
-                  src={img(p.id)} alt="" loading="lazy"
-                  style={{ width:'100%', height:'100%', objectFit:'cover', filter:'grayscale(0.35) contrast(1.05)' }}
-                  onError={e => { e.target.style.display='none'; }}
-                />
-              </div>
-            </button>
-          );
-        })}
+        drag pan · scroll / pinch zoom · arrows move · + − zoom · 0 reset · esc close
       </div>
 
-      {active !== null && photos[active] && (
+      {/* 3D world */}
+      <div style={{ position:'absolute', inset:0, perspective:1200, overflow:'hidden' }}>
         <div
-          onClick={e => e.stopPropagation()}
+          ref={worldRef}
           style={{
-            position:'fixed', bottom:22, left:22, right:22, maxWidth:520, margin:'0 auto',
-            zIndex:10001,
-            background:'rgba(2,4,8,0.78)', backdropFilter:'blur(20px)',
-            border:'1px solid rgba(224,221,174,0.10)', borderRadius:'var(--r-md)',
-            padding:'16px 18px',
-            display:'flex', gap:14, alignItems:'center',
+            position:'absolute', left:'50%', top:'50%',
+            transformStyle:'preserve-3d', willChange:'transform',
           }}
         >
-          <img
-            src={img(photos[active].id)} alt=""
-            style={{ width:70, height:48, objectFit:'cover', borderRadius:6, flexShrink:0 }}
-          />
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontFamily:'var(--display)', fontSize:'1.1rem', letterSpacing:1 }}>Still #{active + 1}</div>
-            <div style={{ fontSize:8, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)', marginTop:3 }}>
-              Click image to close · Arrow keys to browse
+          {photos.map((p, idx) => {
+            const selected = active === idx;
+            return (
+              <button
+                key={p.id}
+                data-cursor={selected ? 'close' : 'view'}
+                aria-label={`Open still ${idx + 1}`}
+                onClick={e => { e.stopPropagation(); setActive(selected ? null : idx); }}
+                style={{
+                  position:'absolute', left:0, top:0,
+                  width:p.w, height:p.w * 0.65,
+                  transform:`translate3d(${p.x}px, ${p.y}px, ${p.z}px) rotate(${p.rot}deg) scale(${selected ? 1.12 : 1})`,
+                  zIndex: selected ? 200 : 1,
+                  opacity: active === null || selected ? 1 : 0.15,
+                  transition:'opacity 0.45s',
+                  background:'none', border:'none', padding:0,
+                }}
+              >
+                <div style={{
+                  width:'100%', height:'100%', borderRadius:8, overflow:'hidden',
+                  border:'1px solid rgba(224,221,174,0.08)',
+                  boxShadow: selected
+                    ? '0 30px 80px rgba(0,0,0,0.85), 0 0 0 2px rgba(224,221,174,0.35)'
+                    : '0 20px 60px rgba(0,0,0,0.7)',
+                }}>
+                  <img
+                    src={img(p.id)} alt="" loading="lazy"
+                    style={{ width:'100%', height:'100%', objectFit:'cover', filter:'grayscale(0.35) contrast(1.05)' }}
+                    onError={e => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected still panel */}
+      {active !== null && photos[active] && (
+        <div
+          onPointerDown={e => e.stopPropagation()}
+          style={{
+            position:'fixed', bottom:34, left:16, right:16, maxWidth:560, margin:'0 auto',
+            zIndex:10001,
+            background:'rgba(2,4,8,0.8)', backdropFilter:'blur(20px)',
+            border:'1px solid rgba(224,221,174,0.10)', borderRadius:'var(--r-md)',
+            padding:'14px 16px',
+            display:'flex', gap:12, alignItems:'center', flexWrap:'wrap',
+          }}
+        >
+          <img src={img(photos[active].id)} alt="" style={{ width:70, height:48, objectFit:'cover', borderRadius:6, flexShrink:0 }} />
+          <div style={{ flex:1, minWidth:110 }}>
+            <div style={{ fontFamily:'var(--display)', fontSize:'1.05rem', letterSpacing:1 }}>Still #{active + 1} / {photos.length}</div>
+            <div style={{ fontSize:7.5, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)', marginTop:3 }}>
+              ← → browse · esc close
             </div>
           </div>
+          <button onClick={() => setActive(a => Math.max(0, a - 1))} data-cursor="action" aria-label="Previous still" style={iconBtn}><ChevronLeft size={15} /></button>
+          <button onClick={() => setActive(a => Math.min(photos.length - 1, a + 1))} data-cursor="action" aria-label="Next still" style={iconBtn}><ChevronRight size={15} /></button>
           <a
-            href={imgFull(photos[active].id)} target="_blank" rel="noopener noreferrer"
-            data-cursor="open"
+            href={imgFull(photos[active].id)} target="_blank" rel="noopener noreferrer" data-cursor="open"
             style={{
               display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:'var(--r-full)',
               border:'1px solid var(--border-2)', fontFamily:'var(--mono)', fontSize:8, letterSpacing:2,
               textTransform:'uppercase', color:'var(--fg)', textDecoration:'none', whiteSpace:'nowrap',
             }}
           >Full size <ZoomIn size={10} /></a>
-          <button onClick={() => setActive(null)} data-cursor="close" style={iconBtn}><X size={16} /></button>
+          <button onClick={() => setActive(null)} data-cursor="close" aria-label="Close still" style={iconBtn}><X size={15} /></button>
         </div>
       )}
     </div>
@@ -214,19 +286,18 @@ function StarCanvas() {
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let w, h, stars = [], raf;
 
     const resize = () => {
-      w = window.innerWidth;
-      h = window.innerHeight;
+      w = window.innerWidth; h = window.innerHeight;
       canvas.width = w; canvas.height = h;
       const r = rng(7);
-      stars = Array.from({ length: 420 }, () => ({
-        x: r() * w, y: r() * h, z: r() * 2 + 0.3, size: r() * 1.4 + 0.3,
+      stars = Array.from({ length: 300 }, () => ({
+        x: r() * w, y: r() * h, z: r() * 2 + 0.3, size: r() * 1.3 + 0.3,
       }));
+      if (reduce) draw();
     };
-    resize();
-    window.addEventListener('resize', resize);
 
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
@@ -237,9 +308,14 @@ function StarCanvas() {
         ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
         ctx.fill();
       }
-      raf = requestAnimationFrame(draw);
     };
-    raf = requestAnimationFrame(draw);
+
+    resize();
+    window.addEventListener('resize', resize);
+    if (!reduce) {
+      const loop = () => { draw(); raf = requestAnimationFrame(loop); };
+      raf = requestAnimationFrame(loop);
+    }
     return () => { window.removeEventListener('resize', resize); cancelAnimationFrame(raf); };
   }, []);
 
@@ -250,5 +326,5 @@ const iconBtn = {
   width:34, height:34, borderRadius:'50%',
   background:'rgba(224,221,174,0.05)', border:'1px solid rgba(224,221,174,0.12)',
   display:'flex', alignItems:'center', justifyContent:'center', color:'var(--fg)',
-  cursor:'pointer',
+  cursor:'pointer', flexShrink:0,
 };

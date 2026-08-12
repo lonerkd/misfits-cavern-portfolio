@@ -381,9 +381,7 @@ export default function App() {
               <Reveal delay={0.2}>
                 <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
                   <a href={`mailto:${EMAIL}`} className="btn-primary"><Mail size={12} /> Get in Touch</a>
-                  <a href={SOCIALS.find(s => s.label === 'YouTube').href} target="_blank" rel="noopener noreferrer" className="btn-ghost">
-                    Watch the Channel
-                  </a>
+                  <a href="#work" className="btn-ghost">See the Work</a>
                 </div>
               </Reveal>
             </div>
@@ -584,7 +582,7 @@ export default function App() {
             <div style={{ display:'flex', gap:18, flexWrap:'wrap' }}>
               {SOCIALS.map(s => (
                 <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" style={{
-                  fontSize:9, letterSpacing:2.5, textTransform:'uppercase', color:'var(--fg-dim)',
+                  fontSize:10, letterSpacing:2.5, textTransform:'uppercase', color:'var(--fg-muted)',
                   textDecoration:'none', transition:'color 0.25s',
                 }}
                   onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
@@ -592,7 +590,7 @@ export default function App() {
                 >{s.label}</a>
               ))}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:7.5, letterSpacing:4, textTransform:'uppercase', color:'var(--fg-ghost)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:8, letterSpacing:4, textTransform:'uppercase', color:'var(--fg-dim)' }}>
               © 2026 Peter Olowude · Misfits Cavern
               <img src="/misfits-mark.svg" alt="" aria-hidden="true" style={{ height:14, width:'auto', opacity:0.5, filter:'grayscale(1)' }} />
             </div>

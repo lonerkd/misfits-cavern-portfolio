@@ -89,7 +89,7 @@ export default function CinematicNav() {
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: 34, right: 34, zIndex: 9000 }}>
+    <div className="mc-puck" style={{ position: 'fixed', bottom: 34, right: 34, zIndex: 9000 }}>
       <button
         aria-label="Scroll to next section"
         data-cursor="action"
