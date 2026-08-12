@@ -37,7 +37,7 @@ const PHOTOS = [
   '1_j3CG7clf1JjE1JaNBvNG0cMqhoRqkLc','1fSNxxxNah51tP51xSbvn1BBl6fgCuSR4','1afs3_OBj53XPp0TSepx4KqzwB2i2bOl',
 ];
 
-const img = id => `https://lh3.googleusercontent.com/d/${id}=w500`;
+const img = id => `https://lh3.googleusercontent.com/d/${id}=w400`;
 const imgFull = id => `https://lh3.googleusercontent.com/d/${id}=w1600`;
 
 function rng(seed) {
@@ -45,21 +45,20 @@ function rng(seed) {
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xffffffff; };
 }
 
-/**
- * StarField — true-3D photo constellation.
- * Photos sit at real Z depths inside a perspective world; the camera
- * (translate3d on one wrapper) is driven entirely by refs + one rAF
- * loop, so pan/zoom never triggers a React render → no lag.
- *
- * Controls: drag (mouse or touch) to pan · wheel / pinch to zoom ·
- * arrows to pan · +/− to zoom · 0 to reset · Tab+Enter to open a
- * still · ←/→ browse while one is open · Esc to close.
- */
+/* Three flat parallax layers instead of a preserve-3d world:
+   the compositor only animates 3 transforms per frame (not 100),
+   no 3D rendering context, no per-photo shadows → smooth on laptops. */
+const LAYERS = [
+  { d: 0.45, z: 1, op: 0.5,  w: [110, 170] },  // far
+  { d: 0.7,  z: 2, op: 0.78, w: [150, 230] },  // mid
+  { d: 1,    z: 3, op: 1,    w: [190, 300] },  // near
+];
+
 export default function StarField({ onClose }) {
   const [active, setActive] = useState(null);
   const [photos, setPhotos] = useState([]);
-  const worldRef = useRef(null);
-  const cam = useRef({ x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0 });
+  const layerRefs = [useRef(null), useRef(null), useRef(null)];
+  const cam = useRef({ x: 0, y: 0, s: 1, tx: 0, ty: 0, ts: 1 });
   const pointers = useRef(new Map());
   const pinch = useRef(0);
   const activeRef = useRef(null);
@@ -67,41 +66,46 @@ export default function StarField({ onClose }) {
 
   useEffect(() => {
     const r = rng(2026);
-    setPhotos([...PHOTOS].sort(() => r() - 0.5).map((id, i) => ({
-      id, i,
-      x: (r() - 0.5) * 2600,
-      y: (r() - 0.5) * 1500,
-      z: (r() - 0.5) * 900,
-      rot: (r() - 0.5) * 24,
-      w: 150 + r() * 190,
-    })));
+    setPhotos([...PHOTOS].sort(() => r() - 0.5).map((id, i) => {
+      const layer = i % 3;
+      const [lo, hi] = LAYERS[layer].w;
+      return {
+        id, i, layer,
+        x: (r() - 0.5) * 2600,
+        y: (r() - 0.5) * 1500,
+        rot: (r() - 0.5) * 22,
+        w: lo + r() * (hi - lo),
+      };
+    }));
   }, []);
 
-  /* Camera loop — refs only, single rAF, lerped for smoothness. */
+  /* Camera loop — 3 layer transforms per frame, refs only. */
   useEffect(() => {
     let raf;
     const tick = () => {
       const c = cam.current;
-      c.x += (c.tx - c.x) * 0.14;
-      c.y += (c.ty - c.y) * 0.14;
-      c.z += (c.tz - c.z) * 0.14;
-      if (worldRef.current) {
-        worldRef.current.style.transform = `translate3d(${c.x}px, ${c.y}px, ${c.z}px)`;
+      c.x += (c.tx - c.x) * 0.16;
+      c.y += (c.ty - c.y) * 0.16;
+      c.s += (c.ts - c.s) * 0.16;
+      for (let i = 0; i < 3; i++) {
+        const el = layerRefs[i].current;
+        if (el) el.style.transform = `translate3d(${c.x * LAYERS[i].d}px, ${c.y * LAYERS[i].d}px, 0) scale(${c.s})`;
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const clampCam = () => {
     const c = cam.current;
-    c.tx = Math.max(-1700, Math.min(1700, c.tx));
-    c.ty = Math.max(-1000, Math.min(1000, c.ty));
-    c.tz = Math.max(-950, Math.min(520, c.tz));
+    const bx = 1400 * c.ts + 300, by = 800 * c.ts + 250;
+    c.tx = Math.max(-bx, Math.min(bx, c.tx));
+    c.ty = Math.max(-by, Math.min(by, c.ty));
+    c.ts = Math.max(0.4, Math.min(2.6, c.ts));
   };
 
-  /* Keyboard: pan/zoom/reset in space mode, browse in select mode. */
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const onKey = e => {
@@ -113,13 +117,13 @@ export default function StarField({ onClose }) {
         return;
       }
       switch (e.key) {
-        case 'ArrowLeft':  c.tx += 130; break;
-        case 'ArrowRight': c.tx -= 130; break;
-        case 'ArrowUp':    c.ty += 130; break;
-        case 'ArrowDown':  c.ty -= 130; break;
-        case '+': case '=': c.tz += 100; break;
-        case '-': case '_': c.tz -= 100; break;
-        case '0': c.tx = c.ty = c.tz = 0; break;
+        case 'ArrowLeft':  c.tx += 150; break;
+        case 'ArrowRight': c.tx -= 150; break;
+        case 'ArrowUp':    c.ty += 150; break;
+        case 'ArrowDown':  c.ty -= 150; break;
+        case '+': case '=': c.ts += 0.2; break;
+        case '-': case '_': c.ts -= 0.2; break;
+        case '0': c.tx = c.ty = 0; c.ts = 1; break;
         default: return;
       }
       e.preventDefault();
@@ -129,7 +133,7 @@ export default function StarField({ onClose }) {
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
   }, [onClose, photos.length]);
 
-  /* Pointer events unify mouse + touch: 1 finger pans, 2 pinch-zoom. */
+  /* Pointer events: 1 finger/mouse drags, 2 fingers pinch-zoom. */
   const onDown = e => {
     if (activeRef.current !== null) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -145,17 +149,17 @@ export default function StarField({ onClose }) {
     const dx = e.clientX - p.x, dy = e.clientY - p.y;
     p.x = e.clientX; p.y = e.clientY;
     const c = cam.current;
-    if (pointers.current.size === 1) { c.tx += dx; c.ty += dy; }
+    if (pointers.current.size === 1) { c.tx += dx / c.s; c.ty += dy / c.s; }
     else if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y);
-      c.tz += (d - pinch.current) * 1.7;
+      c.ts += (d - pinch.current) * 0.004;
       pinch.current = d;
     }
     clampCam();
   };
   const onUp = e => { pointers.current.delete(e.pointerId); pinch.current = 0; };
-  const onWheel = e => { cam.current.tz += -e.deltaY * 0.6; clampCam(); };
+  const onWheel = e => { cam.current.ts += -e.deltaY * 0.0012; clampCam(); };
 
   return (
     <div
@@ -171,7 +175,6 @@ export default function StarField({ onClose }) {
     >
       <StarCanvas />
 
-      {/* Toolbar */}
       <div style={{
         position:'fixed', top:0, left:0, right:0, height:54, zIndex:10000,
         display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px',
@@ -182,13 +185,12 @@ export default function StarField({ onClose }) {
           Photo Archive · {photos.length} stills
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <button onClick={() => { cam.current.tz -= 100; clampCam(); }} aria-label="Zoom out" style={iconBtn}><ZoomOut size={14} /></button>
-          <button onClick={() => { cam.current.tz += 100; clampCam(); }} aria-label="Zoom in" style={iconBtn}><ZoomIn size={14} /></button>
+          <button onClick={() => { cam.current.ts -= 0.2; clampCam(); }} aria-label="Zoom out" style={iconBtn}><ZoomOut size={14} /></button>
+          <button onClick={() => { cam.current.ts += 0.2; clampCam(); }} aria-label="Zoom in" style={iconBtn}><ZoomIn size={14} /></button>
           <button onClick={onClose} aria-label="Close gallery" style={{ ...iconBtn, borderColor:'var(--accent)', color:'var(--accent)' }}><X size={16} /></button>
         </div>
       </div>
 
-      {/* Hint bar */}
       <div aria-hidden style={{
         position:'fixed', bottom:10, left:0, right:0, zIndex:10000, textAlign:'center',
         fontFamily:'var(--mono)', fontSize:7.5, letterSpacing:2.5, textTransform:'uppercase',
@@ -197,43 +199,41 @@ export default function StarField({ onClose }) {
         drag pan · scroll / pinch zoom · arrows move · + − zoom · 0 reset · esc close
       </div>
 
-      {/* 3D world */}
-      <div style={{ position:'absolute', inset:0, perspective:1200, overflow:'hidden' }}>
+      {/* Parallax layers (far → near) */}
+      {LAYERS.map((L, li) => (
         <div
-          ref={worldRef}
+          key={li}
+          ref={layerRefs[li]}
           style={{
-            position:'absolute', left:'50%', top:'50%',
-            transformStyle:'preserve-3d', willChange:'transform',
+            position:'absolute', left:'50%', top:'50%', width:0, height:0,
+            zIndex:L.z, opacity:L.op, willChange:'transform',
           }}
         >
-          {photos.map((p, idx) => {
-            const selected = active === idx;
+          {photos.filter(p => p.layer === li).map(p => {
+            const selected = active === p.i;
             return (
               <button
                 key={p.id}
                 data-cursor={selected ? 'close' : 'view'}
-                aria-label={`Open still ${idx + 1}`}
-                onClick={e => { e.stopPropagation(); setActive(selected ? null : idx); }}
+                aria-label={`Open still ${p.i + 1}`}
+                onClick={e => { e.stopPropagation(); setActive(selected ? null : p.i); }}
                 style={{
                   position:'absolute', left:0, top:0,
                   width:p.w, height:p.w * 0.65,
-                  transform:`translate3d(${p.x}px, ${p.y}px, ${p.z}px) rotate(${p.rot}deg) scale(${selected ? 1.12 : 1})`,
-                  zIndex: selected ? 200 : 1,
+                  transform:`translate(-50%, -50%) translate(${p.x}px, ${p.y}px) rotate(${p.rot}deg)`,
                   opacity: active === null || selected ? 1 : 0.15,
-                  transition:'opacity 0.45s',
+                  transition:'opacity 0.4s',
                   background:'none', border:'none', padding:0,
                 }}
               >
                 <div style={{
                   width:'100%', height:'100%', borderRadius:8, overflow:'hidden',
-                  border:'1px solid rgba(224,221,174,0.08)',
-                  boxShadow: selected
-                    ? '0 30px 80px rgba(0,0,0,0.85), 0 0 0 2px rgba(224,221,174,0.35)'
-                    : '0 20px 60px rgba(0,0,0,0.7)',
+                  border: selected ? '2px solid rgba(224,221,174,0.4)' : '1px solid rgba(224,221,174,0.08)',
+                  background:'#0a0f1a',
                 }}>
                   <img
-                    src={img(p.id)} alt="" loading="lazy"
-                    style={{ width:'100%', height:'100%', objectFit:'cover', filter:'grayscale(0.35) contrast(1.05)' }}
+                    src={img(p.id)} alt="" loading="lazy" decoding="async"
+                    style={{ width:'100%', height:'100%', objectFit:'cover', filter:'grayscale(0.35) contrast(1.05)', display:'block' }}
                     onError={e => { e.target.style.display = 'none'; }}
                   />
                 </div>
@@ -241,9 +241,8 @@ export default function StarField({ onClose }) {
             );
           })}
         </div>
-      </div>
+      ))}
 
-      {/* Selected still panel */}
       {active !== null && photos[active] && (
         <div
           onPointerDown={e => e.stopPropagation()}
@@ -280,43 +279,32 @@ export default function StarField({ onClose }) {
   );
 }
 
+/* Static starfield — drawn once (and on resize), no rAF loop. */
 function StarCanvas() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let w, h, stars = [], raf;
+    let w, h;
 
-    const resize = () => {
+    const draw = () => {
       w = window.innerWidth; h = window.innerHeight;
       canvas.width = w; canvas.height = h;
       const r = rng(7);
-      stars = Array.from({ length: 300 }, () => ({
-        x: r() * w, y: r() * h, z: r() * 2 + 0.3, size: r() * 1.3 + 0.3,
-      }));
-      if (reduce) draw();
-    };
-
-    const draw = () => {
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = '#e0ddae';
-      for (const s of stars) {
-        ctx.globalAlpha = s.z / 2.3;
+      for (let i = 0; i < 300; i++) {
+        const x = r() * w, y = r() * h, z = r() * 2 + 0.3, size = r() * 1.3 + 0.3;
+        ctx.globalAlpha = z / 2.3;
         ctx.beginPath();
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
       }
     };
-
-    resize();
-    window.addEventListener('resize', resize);
-    if (!reduce) {
-      const loop = () => { draw(); raf = requestAnimationFrame(loop); };
-      raf = requestAnimationFrame(loop);
-    }
-    return () => { window.removeEventListener('resize', resize); cancelAnimationFrame(raf); };
+    draw();
+    window.addEventListener('resize', draw);
+    return () => window.removeEventListener('resize', draw);
   }, []);
 
   return <canvas ref={canvasRef} aria-hidden style={{ position:'absolute', inset:0, pointerEvents:'none' }} />;
