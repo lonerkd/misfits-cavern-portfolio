@@ -17,14 +17,14 @@ export const VIDEOS = [
     note:'Best First-Year Drama · Lead Actor · Supporting Actor' },
   { id:'10m',      title:'10 Million',             cat:'Music Video',    role:'Solo Shot · Edited',              year:'2026', desc:'Shot, lit, and edited solo.',                               yt:'3frfHolmYkE', feat:true,  pos:'center' },
   { id:'black',    title:'Black Stuff',            cat:'Music Video',    role:'Solo Shot · Edited',              year:'2025', desc:'Dark aesthetics, deep narrative weight.',                    yt:'NqcGtFr95oM', feat:true,  pos:'center' },
-  { id:'psa',      title:'The Grand PSA',          cat:'Commercial',     role:'Writer · Director · DP · Editor', year:'2025', desc:'Wrote, directed, shot, and graded.',                         yt:'Z9hXm2u4cZw', feat:false, pos:'center' },
-  { id:'altitude', title:'The Pursuit of Altitude',cat:'Documentary',    role:'Writer · Director · DP · Editor', year:'2024', desc:'Visual storytelling through landscape and movement.',        yt:'wHwXBw2xk5M', feat:false, pos:'left' },
+  { id:'psa',      title:'The Grand PSA',          cat:'Commercial',     role:'Director · Producer · Editor', year:'2025', desc:'Directed, produced, and edited.',                         yt:'Z9hXm2u4cZw', feat:false, pos:'center' },
+  { id:'altitude', title:'The Pursuit of Altitude',cat:'Documentary',    role:'Camera · Editor', year:'2024', desc:'Visual storytelling through landscape and movement.',        yt:'wHwXBw2xk5M', feat:false, pos:'left' },
   { id:'intv',     title:'Live Interview Show',    cat:'Live Multi-Cam', role:'Director · Producer',             year:'2025', desc:'Directing multiple camera operators in real time.',          yt:'rctvfSJsO9Y', feat:false, pos:'left' },
   { id:'cook',     title:'Live Cooking Demo',      cat:'Live Multi-Cam', role:'Producer · Director · DP',        year:'2025', desc:'Real-time switching, no second takes.',                      yt:'R2IZKAHYmME', feat:false, pos:'top' },
-  { id:'news',     title:'Banded Peak News Pack',  cat:'Broadcast',      role:'Camera Op · Editor',              year:'2024', desc:'Broadcast news package under deadline.',                     yt:'l6JnCA7e3DY', feat:false, pos:'center' },
-  { id:'audio',    title:'The Audio Blueprint',    cat:'Doc Teaser',     role:'Director · Writer · Editor',      year:'2025', desc:'Sound design — the secret weapon behind iconic movies.',     yt:'FiTiVNZxTPs', feat:false, pos:'center' },
+  { id:'news',     title:'Banded Peak News Pack',  cat:'Broadcast',      role:'Producer · Camera · Editor', year:'2025', desc:'Broadcast news package under deadline.',                     yt:'l6JnCA7e3DY', feat:false, pos:'center' },
+  { id:'audio',    title:'The Audio Blueprint',    cat:'Doc Teaser',     role:'Director · Editor', year:'2024', desc:'Sound design — the secret weapon behind iconic movies.',     yt:'FiTiVNZxTPs', feat:false, pos:'center' },
   { id:'fraud',    title:'Fraud',                  cat:'Doc Teaser',     role:'Producer · Editor',               year:'2024', desc:'How fraud operates in plain sight.',                         yt:'E6rydhe1PAY', feat:false, pos:'center' },
-  { id:'sports',   title:'Live Sports Show Intro', cat:'Live Multi-Cam', role:'Director · Editor',               year:'2025', desc:'Live broadcast opener. Motion graphics meets live energy.',  yt:'gWYoZh9kl9I', feat:false, pos:'center' },
+  { id:'sports',   title:'Live Sports Show Intro', cat:'Live Multi-Cam', role:'Camera Op · Editor · Graphics', year:'2025', desc:'Live broadcast opener. Motion graphics meets live energy.',  yt:'gWYoZh9kl9I', feat:false, pos:'center' },
 ];
 
 export const CREW_CREDITS = [
