@@ -7,6 +7,20 @@ import CinematicNav from './CinematicNav.jsx';
 import { VIDEOS, FEATURED_ID, CREW_CREDITS, WRITING, OTHER_WRITING, SKILL_GROUPS, FACTS, EMAIL, SOCIALS } from './content.js';
 import { thumbUrl, thumbFallback, embedUrl, watchUrl, tintFor, extractColor } from './media.js';
 
+const CAN_TILT = typeof window !== 'undefined'
+  && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const FILTERS = [
+  { id:'all',   label:'All' },
+  { id:'music', label:'Music Video',      cats:['Music Video'] },
+  { id:'narr',  label:'Narrative',        cats:['Short Film'] },
+  { id:'doc',   label:'Documentary',      cats:['Documentary', 'Doc Teaser'] },
+  { id:'comm',  label:'Commercial',       cats:['Commercial'] },
+  { id:'live',  label:'Live & Broadcast', cats:['Live Multi-Cam', 'Broadcast'] },
+];
+const countFor = f => f.cats ? VIDEOS.filter(v => f.cats.includes(v.cat)).length : VIDEOS.length;
+
 const FEATURED = VIDEOS.find(v => v.id === FEATURED_ID);
 const REST = VIDEOS.filter(v => v.id !== FEATURED_ID);
 
@@ -35,9 +49,9 @@ function SectionLabel({ text, right }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
       <div style={{ width:22, height:1, background:'var(--accent)', flexShrink:0 }} />
-      <span style={{ fontSize:8.5, letterSpacing:3.5, textTransform:'uppercase', color:'var(--accent)', whiteSpace:'nowrap' }}>{text}</span>
+      <span style={{ fontSize:10, letterSpacing:3.5, textTransform:'uppercase', color:'var(--accent)', whiteSpace:'nowrap' }}>{text}</span>
       <div style={{ flex:1, height:1, background:'var(--border)' }} />
-      {right && <span style={{ fontSize:8, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)', whiteSpace:'nowrap' }}>{right}</span>}
+      {right && <span style={{ fontSize:9.5, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)', whiteSpace:'nowrap' }}>{right}</span>}
     </div>
   );
 }
@@ -101,8 +115,11 @@ function VCard({ v, onClick, big, onTint }) {
         border:`1px solid ${h ? rgba(0.32) : 'var(--border)'}`,
         borderRadius:'var(--r-md)',
         padding:0, width:'100%', display:'block', height:'100%',
-        transition:'border-color 0.5s var(--ease-expo), transform 0.35s var(--ease-expo), box-shadow 0.5s var(--ease-expo)',
-        transform: h ? 'translateY(-4px)' : 'none',
+        transition:`border-color 0.5s var(--ease-expo), transform ${h && CAN_TILT ? '0.12s ease-out' : '0.5s var(--ease-expo)'}, box-shadow 0.5s var(--ease-expo)`,
+        transform: !h ? 'none'
+          : CAN_TILT ? `perspective(900px) rotateX(${((50 - mouse.y) / 50) * 3.5}deg) rotateY(${((mouse.x - 50) / 50) * 4.5}deg) translateY(-4px)`
+          : 'translateY(-4px)',
+        willChange: h ? 'transform' : 'auto',
         boxShadow: h ? `0 22px 55px rgba(0,0,0,0.6), 0 0 60px ${rgba(0.14)}` : '0 8px 24px rgba(0,0,0,0.35)',
         cursor:'pointer',
       }}
@@ -127,7 +144,7 @@ function VCard({ v, onClick, big, onTint }) {
       {/* Category */}
       <div style={{
         position:'absolute', top:13, right:13, zIndex:11,
-        fontSize:7.5, letterSpacing:2.5, textTransform:'uppercase',
+        fontSize:9, letterSpacing:2.5, textTransform:'uppercase',
         color:'var(--fg)', fontFamily:'var(--mono)',
         padding:'5px 11px', borderRadius:'var(--r-full)',
         background:'rgba(4,7,13,0.45)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
@@ -159,7 +176,7 @@ function VCard({ v, onClick, big, onTint }) {
         }}>{v.title}</h3>
         <div style={{
           display:'flex', alignItems:'center', gap:8, marginTop:6,
-          fontFamily:'var(--mono)', fontSize: big ? 9 : 8, letterSpacing:1.8,
+          fontFamily:'var(--mono)', fontSize: big ? 10.5 : 9.5, letterSpacing:1.8,
           color:'var(--fg-dim)', textTransform:'uppercase',
         }}>
           <span>{v.role}</span>
@@ -168,7 +185,7 @@ function VCard({ v, onClick, big, onTint }) {
         </div>
         {v.note && (
           <div style={{
-            fontFamily:'var(--mono)', fontSize: big ? 8.5 : 7.5, letterSpacing:1.5,
+            fontFamily:'var(--mono)', fontSize: big ? 10 : 9, letterSpacing:1.5,
             color:'var(--accent)', marginTop:8, textTransform:'uppercase',
           }}>❦ {v.note}</div>
         )}
@@ -228,7 +245,7 @@ function VideoOverlay({ video, color, onClose }) {
         }}>
           <button onClick={onClose} style={{
             display:'flex', alignItems:'center', gap:8, background:'none', border:'none',
-            fontFamily:'var(--mono)', fontSize:9, letterSpacing:3, textTransform:'uppercase',
+            fontFamily:'var(--mono)', fontSize:10.5, letterSpacing:3, textTransform:'uppercase',
             color:'var(--fg-dim)', cursor:'pointer',
           }}><ChevronLeft size={14} /> Back</button>
           <button onClick={onClose} aria-label="Close" style={{
@@ -253,7 +270,7 @@ function VideoOverlay({ video, color, onClose }) {
           <span style={{
             display:'inline-block', padding:'5px 13px', borderRadius:'var(--r-full)',
             background:rgba(0.10), border:`1px solid ${rgba(0.26)}`,
-            fontFamily:'var(--mono)', fontSize:8.5, letterSpacing:2.5, textTransform:'uppercase',
+            fontFamily:'var(--mono)', fontSize:10, letterSpacing:2.5, textTransform:'uppercase',
             color:`rgb(${c.r},${c.g},${c.b})`,
           }}>{video.cat}</span>
 
@@ -265,7 +282,7 @@ function VideoOverlay({ video, color, onClose }) {
             {video.desc}
           </p>
           {video.note && (
-            <div style={{ fontFamily:'var(--mono)', fontSize:9, letterSpacing:2, color:'var(--accent)', marginTop:12, textTransform:'uppercase' }}>
+            <div style={{ fontFamily:'var(--mono)', fontSize:10.5, letterSpacing:2, color:'var(--accent)', marginTop:12, textTransform:'uppercase' }}>
               ❦ {video.note}
             </div>
           )}
@@ -276,7 +293,7 @@ function VideoOverlay({ video, color, onClose }) {
           }}>
             {[['Role', video.role], ['Year', video.year], ['By', 'Peter Olowude']].map(([k, val]) => (
               <div key={k}>
-                <div style={{ fontSize:8, letterSpacing:3, color:'var(--fg-ghost)', fontFamily:'var(--mono)', marginBottom:5, textTransform:'uppercase' }}>{k}</div>
+                <div style={{ fontSize:9.5, letterSpacing:3, color:'var(--fg-ghost)', fontFamily:'var(--mono)', marginBottom:5, textTransform:'uppercase' }}>{k}</div>
                 <div style={{ fontSize:11, letterSpacing:1.5, color:'var(--fg-muted)', fontFamily:'var(--mono)' }}>{val}</div>
               </div>
             ))}
@@ -298,6 +315,23 @@ export default function App() {
   const [ambient, setAmbient] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const [showPhotos, setShowPhotos] = useState(false);
+  const [filter, setFilter] = useState('all');
+  const [section, setSection] = useState(null);
+
+  const activeFilter = FILTERS.find(f => f.id === filter);
+  // "All" leaves the featured film to the hero; a category filter includes it.
+  const shown = filter === 'all' ? REST : VIDEOS.filter(v => activeFilter.cats.includes(v.cat));
+
+  useEffect(() => {
+    const els = ['work', 'writing'].map(id => document.getElementById(id)).filter(Boolean);
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) setSection(e.target.id); });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    els.forEach(el => io.observe(el));
+    const onScroll = () => { if (window.scrollY < 200) setSection(null); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { io.disconnect(); window.removeEventListener('scroll', onScroll); };
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -326,12 +360,13 @@ export default function App() {
           transition:'background 0.35s, border-color 0.35s',
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <span style={{ fontFamily:'var(--display)', fontSize:'0.95rem', letterSpacing:4 }}>PETER OLOWUDE</span>
+            <span className="nav-name" style={{ fontFamily:'var(--display)', fontSize:'0.95rem', letterSpacing:4, whiteSpace:'nowrap' }}>PETER OLOWUDE</span>
             <span className="nav-meta" style={{ width:1, height:13, background:'var(--border-2)' }} />
-            <span className="nav-meta" style={{ fontSize:8, letterSpacing:2.5, textTransform:'uppercase', color:'var(--fg-dim)' }}>Editor · Filmmaker · Calgary</span>
+            <span className="nav-meta" style={{ fontSize:9.5, letterSpacing:2.5, textTransform:'uppercase', color:'var(--fg-dim)' }}>Editor · Filmmaker · Calgary</span>
           </div>
           <div style={{ display:'flex', gap:8 }}>
-            <a href="#work" className="link-btn" style={{ padding:'7px 13px' }}>Work</a>
+            <a href="#work" className={`link-btn nav-hide-sm${section === 'work' ? ' is-active' : ''}`} style={{ padding:'7px 13px' }}>Work</a>
+            <a href="#writing" className={`link-btn nav-hide-sm${section === 'writing' ? ' is-active' : ''}`} style={{ padding:'7px 13px' }}>Writing</a>
             <button
               onClick={() => setShowPhotos(true)}
               data-cursor="view"
@@ -371,7 +406,7 @@ export default function App() {
                 <dl style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:'9px 18px', marginBottom:26, fontSize:10.5 }}>
                   {FACTS.map(([k, val]) => (
                     <React.Fragment key={k}>
-                      <dt style={{ fontSize:8, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)', paddingTop:2 }}>{k}</dt>
+                      <dt style={{ fontSize:9.5, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)', paddingTop:2 }}>{k}</dt>
                       <dd style={{ color:'var(--fg-muted)', letterSpacing:0.3 }}>{val}</dd>
                     </React.Fragment>
                   ))}
@@ -394,17 +429,27 @@ export default function App() {
         </section>
 
         {/* ═══ WORK ═══ */}
-        <section id="work" style={{ maxWidth:1180, margin:'0 auto', padding:'30px 22px 20px' }}>
-          <Reveal><SectionLabel text="Selected Work" right={`${VIDEOS.length} Projects`} /></Reveal>
+        <section id="work" style={{ maxWidth:1180, margin:'0 auto', padding:'30px 22px 20px', scrollMarginTop:70 }}>
+          <Reveal><SectionLabel text="Selected Work" right={`${filter === 'all' ? VIDEOS.length : shown.length} Projects`} /></Reveal>
+          <div role="group" aria-label="Filter work by type" style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:16 }}>
+            {FILTERS.map(f => (
+              <button key={f.id} type="button" className="chip" aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
+                {f.label}<span className="chip-n">{countFor(f)}</span>
+              </button>
+            ))}
+          </div>
           <div className="mc-bento">
-            {REST.map((v, i) => {
+            {shown.map((v, i) => {
               // Apple-style bento: featured items are large (2×2), the first
               // two after that are wide (2×1), the rest standard (1×1).
               // On smaller screens the .mc-bento CSS collapses to 1 column.
-              const cls = v.feat ? 'bento-feat' : (i < 2 ? 'bento-wide' : '');
+              // Filtered views ignore the tiers and split the row evenly instead.
+              const cls = filter === 'all'
+                ? (v.feat ? 'bento-feat' : (i < 2 ? 'bento-wide' : ''))
+                : `span-${12 / Math.min(shown.length, 4)}`;
               return (
-                <Reveal key={v.id} className={cls} delay={(i % 4) * 0.05}>
-                  <VCard v={v} onClick={open} onTint={setAmbient} big={v.feat} />
+                <Reveal key={`${filter}-${v.id}`} className={cls} delay={(i % 4) * 0.05}>
+                  <VCard v={v} onClick={open} onTint={setAmbient} big={filter === 'all' ? v.feat : shown.length < 3} />
                 </Reveal>
               );
             })}
@@ -422,9 +467,9 @@ export default function App() {
                   }}>
                     <div style={{ display:'flex', alignItems:'baseline', gap:12 }}>
                       <span style={{ fontFamily:'var(--display)', fontSize:'1.1rem', letterSpacing:1.5 }}>{c.title}</span>
-                      <span style={{ fontSize:8, letterSpacing:2, textTransform:'uppercase', color:'var(--accent)' }}>{c.cat}</span>
+                      <span style={{ fontSize:9.5, letterSpacing:2, textTransform:'uppercase', color:'var(--accent)' }}>{c.cat}</span>
                     </div>
-                    <span style={{ fontSize:8.5, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)' }}>
+                    <span style={{ fontSize:10, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)' }}>
                       {c.role} · {c.org} · {c.date}
                     </span>
                   </div>
@@ -435,7 +480,7 @@ export default function App() {
         </section>
 
         {/* ═══ WRITING ═══ */}
-        <section style={{ maxWidth:1180, margin:'0 auto', padding:'34px 22px 0' }}>
+        <section id="writing" style={{ maxWidth:1180, margin:'0 auto', padding:'34px 22px 0', scrollMarginTop:70 }}>
           <Reveal>
             <SectionLabel text="Writing" right="Sample Pages" />
             <div style={{
@@ -447,7 +492,7 @@ export default function App() {
                 <div style={{ fontFamily:'var(--display)', fontSize:'1.9rem', letterSpacing:1.5, lineHeight:1.05, marginBottom:8 }}>
                   {WRITING.title}
                 </div>
-                <div style={{ fontSize:8.5, letterSpacing:2, textTransform:'uppercase', color:'var(--accent)', marginBottom:12 }}>
+                <div style={{ fontSize:10, letterSpacing:2, textTransform:'uppercase', color:'var(--accent)', marginBottom:12 }}>
                   {WRITING.meta}
                 </div>
                 <p style={{ fontFamily:'var(--serif)', fontSize:14.5, lineHeight:1.65, color:'var(--fg-muted)', fontStyle:'italic', marginBottom:20 }}>
@@ -476,7 +521,7 @@ export default function App() {
                       onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                     >
                       <span style={{ minWidth:0 }}>
-                        <span style={{ display:'block', fontSize:7.5, letterSpacing:2.5, textTransform:'uppercase', color:'var(--fg-dim)' }}>{w.type}</span>
+                        <span style={{ display:'block', fontSize:9, letterSpacing:2.5, textTransform:'uppercase', color:'var(--fg-dim)' }}>{w.type}</span>
                         <span style={{ fontSize:11.5, color:'var(--fg-muted)' }}>{w.title} — {w.sub}</span>
                       </span>
                       <ExternalLink size={11} style={{ flexShrink:0, color:'var(--fg-dim)' }} />
@@ -487,10 +532,10 @@ export default function App() {
                       padding:'10px 14px', border:'1px dashed var(--border)', borderRadius:'var(--r-xs)',
                     }}>
                       <span style={{ minWidth:0 }}>
-                        <span style={{ display:'block', fontSize:7.5, letterSpacing:2.5, textTransform:'uppercase', color:'var(--fg-dim)' }}>{w.type}</span>
+                        <span style={{ display:'block', fontSize:9, letterSpacing:2.5, textTransform:'uppercase', color:'var(--fg-dim)' }}>{w.type}</span>
                         <span style={{ fontSize:11.5, color:'var(--fg-muted)' }}>{w.title} — {w.sub}</span>
                       </span>
-                      <span style={{ flexShrink:0, fontSize:7.5, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-ghost)' }}>Soon</span>
+                      <span style={{ flexShrink:0, fontSize:9, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-ghost)' }}>Soon</span>
                     </div>
                   ))}
                 </div>
@@ -517,7 +562,7 @@ export default function App() {
                 }} />
                 <div style={{
                   position:'absolute', bottom:12, left:0, right:0, textAlign:'center',
-                  fontSize:7.5, letterSpacing:3, textTransform:'uppercase', color:'var(--fg-dim)',
+                  fontSize:9, letterSpacing:3, textTransform:'uppercase', color:'var(--fg-dim)',
                 }}>
                   Excerpt · Full script on request
                 </div>
@@ -542,7 +587,7 @@ export default function App() {
                     background:`radial-gradient(circle, ${g.color}14 0%, transparent 65%)`, pointerEvents:'none',
                   }} />
                   <div style={{ position:'relative', zIndex:1 }}>
-                    <div style={{ fontSize:7.5, letterSpacing:3, textTransform:'uppercase', color:g.color, marginBottom:11 }}>
+                    <div style={{ fontSize:9, letterSpacing:3, textTransform:'uppercase', color:g.color, marginBottom:11 }}>
                       {g.label}
                     </div>
                     <ul style={{ listStyle:'none', display:'flex', flexDirection:'column', gap:6 }}>
@@ -567,7 +612,7 @@ export default function App() {
               <div style={{ fontFamily:'var(--display)', fontSize:'1.5rem', letterSpacing:2, marginBottom:5 }}>
                 LET&rsquo;S WORK TOGETHER
               </div>
-              <div style={{ fontSize:9, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)' }}>
+              <div style={{ fontSize:10.5, letterSpacing:2, textTransform:'uppercase', color:'var(--fg-dim)' }}>
                 Calgary, AB · On-site or remote · Available now
               </div>
             </div>
@@ -590,7 +635,7 @@ export default function App() {
                 >{s.label}</a>
               ))}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:12, fontSize:8, letterSpacing:4, textTransform:'uppercase', color:'var(--fg-dim)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12, fontSize:9.5, letterSpacing:4, textTransform:'uppercase', color:'var(--fg-dim)' }}>
               © 2026 Peter Olowude · Misfits Cavern
               <img src="/misfits-mark.svg" alt="" aria-hidden="true" style={{ height:25, width:'auto', opacity:0.75, flexShrink:0 }} />
             </div>
