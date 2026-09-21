@@ -6,9 +6,9 @@ import DotField from './DotField.jsx';
 import StarField from './StarField.jsx';
 import CinematicNav from './CinematicNav.jsx';
 import { VIDEOS, FEATURED_ID, CREW_CREDITS, WRITING, OTHER_WRITING, SKILL_GROUPS, FACTS, EMAIL, SOCIALS } from './content.js';
-import { thumbUrl, thumbFallback, embedUrl, watchUrl, tintFor, extractColor } from './media.js';
+import { thumbUrl, thumbFallback, embedUrl, previewUrl, watchUrl, tintFor, extractColor } from './media.js';
 
-const CAN_TILT = typeof window !== 'undefined'
+const HOVER_FX = typeof window !== 'undefined'
   && window.matchMedia('(hover: hover) and (pointer: fine)').matches
   && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -83,7 +83,36 @@ function VCard({ v, onClick, big, onTint }) {
   const [h, setH] = useState(false);
   const [color, setColor] = useState(null);
   const [mouse, setMouse] = useState({ x: 50, y: 50 });
+  const [preview, setPreview] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
   const ref = useRef(null);
+  const frame = useRef(null);
+
+  // Muted looping preview after a short hover dwell; one iframe at a time
+  // because it only exists while the card is hovered. Desktop only.
+  useEffect(() => {
+    if (!HOVER_FX || !v.yt || !h) { setPreview(false); setPreviewReady(false); return; }
+    const t = setTimeout(() => setPreview(true), 500);
+    return () => clearTimeout(t);
+  }, [h, v.yt]);
+
+  // Only fade the preview in once YouTube reports it is really playing (state 1),
+  // so a blocked autoplay never shows the player's paused UI over the thumbnail.
+  useEffect(() => {
+    if (!preview) return;
+    let reveal;
+    const onMsg = e => {
+      if (e.source !== frame.current?.contentWindow) return;
+      try {
+        const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        const playing = (d?.event === 'onStateChange' && d.info === 1)
+          || (d?.event === 'infoDelivery' && d.info?.playerState === 1);
+        if (playing) { clearTimeout(reveal); reveal = setTimeout(() => setPreviewReady(true), 450); }
+      } catch { /* not a YouTube message */ }
+    };
+    window.addEventListener('message', onMsg);
+    return () => { window.removeEventListener('message', onMsg); clearTimeout(reveal); };
+  }, [preview]);
 
   useEffect(() => {
     let live = true;
@@ -116,9 +145,9 @@ function VCard({ v, onClick, big, onTint }) {
         border:`1px solid ${h ? rgba(0.32) : 'var(--border)'}`,
         borderRadius:'var(--r-md)',
         padding:0, width:'100%', display:'block', height:'100%',
-        transition:`border-color 0.5s var(--ease-expo), transform ${h && CAN_TILT ? '0.12s ease-out' : '0.5s var(--ease-expo)'}, box-shadow 0.5s var(--ease-expo)`,
+        transition:`border-color 0.5s var(--ease-expo), transform ${h && HOVER_FX ? '0.12s ease-out' : '0.5s var(--ease-expo)'}, box-shadow 0.5s var(--ease-expo)`,
         transform: !h ? 'none'
-          : CAN_TILT ? `perspective(900px) rotateX(${((50 - mouse.y) / 50) * 3.5}deg) rotateY(${((mouse.x - 50) / 50) * 4.5}deg) translateY(-4px)`
+          : HOVER_FX ? `perspective(900px) rotateX(${((50 - mouse.y) / 50) * 3.5}deg) rotateY(${((mouse.x - 50) / 50) * 4.5}deg) translateY(-4px)`
           : 'translateY(-4px)',
         willChange: h ? 'transform' : 'auto',
         boxShadow: h ? `0 22px 55px rgba(0,0,0,0.6), 0 0 60px ${rgba(0.14)}` : '0 8px 24px rgba(0,0,0,0.35)',
@@ -131,6 +160,23 @@ function VCard({ v, onClick, big, onTint }) {
         transform: h ? 'scale(1.045)' : 'scale(1)',
         filter: h ? 'brightness(0.52)' : 'brightness(0.42)',
       }} />
+
+      {preview && (
+        <iframe
+          title=""
+          aria-hidden="true"
+          tabIndex={-1}
+          ref={frame}
+          src={previewUrl(v)}
+          allow="autoplay; encrypted-media"
+          onLoad={() => frame.current?.contentWindow?.postMessage(JSON.stringify({ event:'listening', id:1, channel:'widget' }), '*')}
+          style={{
+            position:'absolute', inset:0, width:'100%', height:'100%', border:0,
+            pointerEvents:'none', transform:'scale(1.5)', filter:'brightness(0.62)',
+            opacity: previewReady ? 1 : 0, transition:'opacity 0.6s var(--ease-expo)',
+          }}
+        />
+      )}
 
       <div style={{ position:'absolute', inset:0,
         background:'linear-gradient(to top, rgba(2,4,8,0.94) 0%, rgba(2,4,8,0.25) 52%, transparent 100%)' }} />

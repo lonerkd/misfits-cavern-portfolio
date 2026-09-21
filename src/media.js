@@ -13,6 +13,10 @@ export const embedUrl = v =>
   v.yt ? `https://www.youtube-nocookie.com/embed/${v.yt}?rel=0&modestbranding=1`
        : `https://drive.google.com/file/d/${v.did}/preview`;
 
+// Silent, chrome-less looping preview for card hover.
+export const previewUrl = v =>
+  `https://www.youtube-nocookie.com/embed/${v.yt}?enablejsapi=1&autoplay=1&mute=1&controls=0&disablekb=1&fs=0&iv_load_policy=3&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${v.yt}`;
+
 export const watchUrl = v =>
   v.yt ? `https://www.youtube.com/watch?v=${v.yt}`
        : `https://drive.google.com/file/d/${v.did}/view`;
