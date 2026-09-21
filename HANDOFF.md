@@ -108,9 +108,12 @@ src/
 
 ## 8. Known issues / open items
 
-1. **No analytics installed.** PR #1 (`vercel/install-vercel-web-analytics-bz1bs4`)
-   exists to add Vercel Web Analytics but is unmerged. Decision needed: merge it, use
-   a privacy-friendly alt (Plausible/Umami/Cloudflare Web Analytics), or keep none.
+1. **Analytics: code installed, dashboard toggle may still be off.** `@vercel/analytics`
+   is mounted (`<Analytics />` at the end of `App`), so `/_vercel/insights/script.js`
+   is served. Data only flows once Web Analytics is enabled in the Vercel dashboard
+   (before that the API returns "Web Analytics not found"). PR #1
+   (`vercel/install-vercel-web-analytics-bz1bs4`) is **superseded** — it targets the
+   deleted root `App.jsx`; close it.
 2. **`npm audit`: 2 vulnerabilities** (1 moderate `esbuild <=0.24.2`, 1 high
    `vite <=6.4.2`). Both are **dev-server-only** (esbuild/vite are devDependencies);
    the high one includes Windows-specific paths (N/A on macOS). Fix path = deliberate
@@ -118,6 +121,14 @@ src/
 3. **DM button label** is cosmetic (`DM Me` vs `DM ME`) — user said it's irrelevant.
 4. No CI/CD config in-repo (deploy is Vercel auto-build on `main` push). No tests,
    lint, or format tooling configured. No ESLint/Prettier configs.
+
+### Recent changes (2026-09-21)
+- Design pass: brighter `--fg-*` tokens and larger micro-labels; work filter chips
+  (`FILTERS` in `App.jsx`); card tilt (`CAN_TILT`, fine-pointer + no reduced-motion only);
+  animated `.film-chrome` corners; nav active-section state and a Writing link; Work/Writing
+  nav links hidden under 720px so the nav fits phones; favicon.
+- `content.js` credits synced to the CV (CV is the source of truth for roles/years;
+  The Briefcase stays "Lead Actor · DP · Editor").
 
 ## 9. Working conventions observed in this codebase
 
